@@ -23,15 +23,17 @@ async def main():
 
     queue: "Queue[Tuple[str, str, int, str]]" = Queue()
     async with create_task_group() as tg:
-        await tg.spawn(
-            check_many,
-            items,
-            args.target_ip,
-            args.target_port,
-            args.token,
-            args.concurrent,
-            queue
-        )
+        async def _check_many():
+            await check_many(
+                items,
+                args.target_ip,
+                args.target_port,
+                args.token,
+                args.concurrent,
+                queue
+            )
+            await tg.cancel_scope.cancel()
+        await tg.spawn(_check_many)
 
         while True:
             type, ip, port, out = await queue.get()
