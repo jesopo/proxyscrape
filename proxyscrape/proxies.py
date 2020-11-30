@@ -88,6 +88,34 @@ async def http_connect(
         return body
     return None
 
+async def socks4(
+        reader: StreamReader,
+        writer: StreamWriter,
+        target_ip:   str,
+        target_port: int
+        ) -> Optional[bytes]:
+
+    writer.write(struct.pack(
+        "!BBH4sB",
+        0x04, # version
+        0x01, # CONNECT command
+        target_port,
+        inet_aton(target_ip),
+        0x00  # terminator for our user-id (empty)
+    ))
+    await writer.drain()
+
+    resp = await _recv(reader, 2)
+    if not resp == b"\x00\x5a":
+        return None
+
+    # we don't actually need to parse these
+    port = await _recv(reader, 2) # ([0]<<8) + [1]
+    addr = await _recv(reader, 4) # inet_ntoa
+
+    status, body = await _http("SOCKS4", reader)
+    return body
+
 async def socks5(
         reader: StreamReader,
         writer: StreamWriter,
@@ -141,6 +169,9 @@ async def from_type(
         ) -> Optional[bytes]:
     if   type == "socks5":
         return await socks5(
+            reader, writer, target_ip, target_port)
+    elif type == "socks4":
+        return await socks4(
             reader, writer, target_ip, target_port)
     elif type == "http-get":
         return await http_get(
