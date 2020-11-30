@@ -157,7 +157,7 @@ async def socks5(
     writer.write(f"GET / HTTP/1.0\r\n\r\n".encode("utf8"))
     await writer.drain()
 
-    stats, body = await _http("SOCKS5", reader)
+    status, body = await _http("SOCKS5", reader)
     return body
 
 async def from_type(
